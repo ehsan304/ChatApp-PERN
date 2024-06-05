@@ -7,18 +7,18 @@ export const signup = async (req: Request, res: Response) => {
     try {
         const { fullName, username, password, confirmPassword, gender } = req.body
         if (!fullName || !username || !password || !confirmPassword || !gender) {
-            res.status(400).json({ message: "Require all fields" })
+            return res.status(400).json({ error: "Require all fields" })
         }
 
         if (confirmPassword !== password) {
-            res.status(400).json({ message: "Password did not match" })
+            return res.status(400).json({ error: "Password did not match" })
         }
 
 
         const existingUser = await prisma.user.findUnique({ where: { username } })
 
         if (existingUser) {
-            res.status(400).json({ message: "username already exist" })
+            return res.status(400).json({ error: "username already exist" })
         }
 
         const salt = await bcryptjs.genSalt(10)
@@ -48,7 +48,7 @@ export const signup = async (req: Request, res: Response) => {
                 profilePic: newUser.profilePic
             })
         } else {
-            res.status(401).json({ error: "Invalid user data" })
+            return res.status(401).json({ error: "Invalid user data" })
         }
 
     } catch (error: any) {
@@ -59,17 +59,20 @@ export const signup = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
     try {
         const { username, password } = req.body
+        if (!(username || password)) {
+            return res.status(400).json({ error:  "Both fields are required" })
+        }
 
         const user = await prisma.user.findUnique({ where: { username } })
 
         if (!user) {
-            res.status(400).json({ error: "Invalid credentials" })
+            return res.status(400).json({ error: "Invalid credentials" })
         } else {
 
             const isPasswordCorrect = await bcryptjs.compare(password, user.password)
 
             if (!isPasswordCorrect) {
-                res.status(400).json({ error: "Invalid credentials" })
+                return res.status(400).json({ error: "Invalid credentials" })
             }
         }
 
@@ -92,7 +95,7 @@ export const logout = async (req: Request, res: Response) => {
         res.cookie("jwt", "", { maxAge: 0 })
         res.status(200).json({ message: "Logged out successfully" })
     } catch (error: any) {
-        console.log("Error in login controller", error.message)
+        console.log("Error in logout controller", error.message)
         res.status(500).json({ error: "Internal server error" })
     }
 }
