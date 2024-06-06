@@ -1,17 +1,18 @@
 import { Request, Response } from "express";
 import prisma from "../db/prisma.js";
+import { getReceiverSocketId, io } from "../socket/socket.js";
 
 export const sendMessage = async (req: Request, res: Response) => {
     try {
         const { message } = req.body
-        const { id: reciverId } = req.params
+        const { id: receiverId } = req.params
         const senderId = req.user.id
 
         // checking that is there any conversation exist befor or notvc
         let conversation = await prisma.conversation.findFirst({
             where: {
                 participantIds: {
-                    hasEvery: [senderId, reciverId]
+                    hasEvery: [senderId, receiverId]
                 }
             }
         })
@@ -21,7 +22,7 @@ export const sendMessage = async (req: Request, res: Response) => {
             conversation = await prisma.conversation.create({
                 data: {
                     participantIds: {
-                        set: [reciverId, senderId]
+                        set: [receiverId, senderId]
                     }
                 }
             })
@@ -51,7 +52,11 @@ export const sendMessage = async (req: Request, res: Response) => {
             })
         }
 
-
+// socket.io logic
+const receiverSocketId = getReceiverSocketId(receiverId);
+if (receiverSocketId) {
+    io.to(receiverSocketId).emit("newMessage", newMessage)
+}
 
         res.status(201).json(newMessage);
     } catch (error: any) {
